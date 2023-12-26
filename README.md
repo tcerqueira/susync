@@ -31,3 +31,6 @@ async fn func() -> Option<u32> {
     future.await.ok()
 }
 ```
+
+## Docs
+Full documentation [here](https://docs.rs/susync/).

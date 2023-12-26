@@ -1,8 +1,9 @@
 [package]
 name = "susync"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
+documentation = "https://docs.rs/susync/"
 description = "An util crate to complete futures through a handle. Its main purpose is to bridge async Rust and callback-based APIs."
 repository = "https://github.com/tcerqueira/susync"
 readme = "README.md"
