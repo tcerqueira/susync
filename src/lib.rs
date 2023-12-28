@@ -245,7 +245,6 @@ pub fn suspend<T: Send>(func: impl FnOnce(SuspendHandle<T>)) -> SuspendFuture<T>
 
 #[cfg(test)]
 mod tests {
-    use core::panic;
     use super::*;
 
     #[tokio::test]
@@ -258,7 +257,7 @@ mod tests {
         });
 
         tokio::spawn(async move {
-            comp.complete(());
+            assert!(comp.complete(()));
         });
     }
 
@@ -274,9 +273,7 @@ mod tests {
 
         drop(comp);
         let res = fut.await;
-        if res.is_ok() {
-            panic!("expected error, got ok result")
-        }
+        assert!(res.is_err(), "expected Err, got Ok result");
     }
 
     #[tokio::test]
@@ -286,14 +283,12 @@ mod tests {
         let inner_comp = comp.clone();
         tokio::spawn(async move {
             std::thread::sleep(std::time::Duration::from_millis(100));
-            inner_comp.complete(());
+            assert!(inner_comp.complete(()));
         });
 
         drop(comp);
         let res = fut.await;
-        if res.is_err() {
-            panic!("expected ok, got err result");
-        }
+        assert!(res.is_ok(), "expected Ok, got Err result");
     }
 
     #[tokio::test]
@@ -307,9 +302,7 @@ mod tests {
         });
 
         let res = fut.await;
-        if res.is_err() {
-            panic!("expected ok, got err result");
-        }
+        assert!(res.is_ok(), "expected Ok, got Err result");
         assert!(!comp.complete(()));
     }
 
@@ -349,7 +342,7 @@ mod tests {
         for i in 0..10 {
             let inner_comp = comp.clone();
             if i == 5 {
-                inner_comp.complete(());
+                assert!(inner_comp.complete(()));
             }
         }
         drop(comp);
@@ -366,7 +359,7 @@ mod tests {
             let inner_comp = comp.clone();
             tokio::spawn(async move {
                 if i == 5 {
-                    inner_comp.complete(());
+                    assert!(inner_comp.complete(()));
                 }
             });
         }
@@ -380,7 +373,7 @@ mod tests {
     async fn complete_before_await() {
         let (fut, comp) = create::<()>();
 
-        comp.complete(());
+        assert!(comp.complete(()));
         tokio::spawn(async move {
             fut.await.unwrap();
         });
@@ -392,10 +385,10 @@ mod tests {
 
         let inner_comp = comp.clone();
         let res = mock_callback_func_early_err(move |res| {
-            inner_comp.complete(Ok(res));
+            assert!(!inner_comp.complete(Ok(res)));
         });
         if let Err(res) = res {
-            comp.complete(Err(res));
+            assert!(comp.complete(Err(res)));
         }
 
         let res = fut.await;
@@ -416,7 +409,7 @@ mod tests {
     async fn suspend_func() {
         let fut = suspend(|comp| {
             let _ = mock_callback_func(move |res| {
-                comp.complete(res);
+                assert!(comp.complete(res));
             });
         });
 
@@ -437,10 +430,10 @@ mod tests {
         let fut = suspend(|comp| {
             let inner_comp = comp.clone();
             let res = mock_callback_func_early_err(move |res| {
-                inner_comp.complete(Ok(res));
+                assert!(!inner_comp.complete(Ok(res)));
             });
             if let Err(res) = res {
-                comp.complete(Err(res));
+                assert!(comp.complete(Err(res)));
             }
         });
 
