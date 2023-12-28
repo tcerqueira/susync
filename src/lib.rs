@@ -130,7 +130,27 @@ impl<T: Send> Future for SuspendFuture<T> {
 }
 
 impl<T> SuspendHandle<T> {
-    /// Complete the future with given result. It will signal the future that a result is ready.
+    /// Try to complete the [`SuspendFuture`] with given result. It will signal the future that a result is ready.
+    /// Returns `true` if successfully sends the value to the future. It does **not** guarantee that the future will resolve with that value,
+    /// it is possible that other futures are racing to complete the future.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// let (future, handle1) = susync::create();
+    /// let handle2 = handle1.clone();
+    /// let handle3 = handle1.clone();
+    /// // successfully sends the value to complete on both
+    /// assert!(handle1.complete(1));
+    /// assert!(handle2.complete(2));
+    /// 
+    /// let result = future.await.unwrap();
+    /// // unsuccessfully tries to complete a future that completed
+    /// assert!(!handle3.complete(3));
+    /// assert_eq!(result, 1);
+    /// # });
+    /// ```
     pub fn complete(self, result: T) -> bool {
         let successful = self.send_update(SuspendUpdate::Complete(result));
         if let Some(waker) = self.waker.upgrade() {
@@ -158,20 +178,20 @@ impl<T> Clone for SuspendHandle<T> {
     /// Implemented clone to allow racing for completion of the future.
     /// 
     /// ```rust
-    /// async fn func() -> Option<u32> {
-    ///     let future = susync::suspend(|handle| {
-    ///         // create another handle to race
-    ///         let inner_handle = handle.clone(); 
-    ///         let ret = func_with_callback_and_return(|res| {
-    ///             // race to completion
-    ///             inner_handle.complete(res);
-    ///         });
+    /// # tokio_test::block_on(async {
+    /// let future = susync::suspend(|handle| {
+    ///     // create another handle to race
+    ///     let inner_handle = handle.clone(); 
+    ///     let ret = func_with_callback_and_return(|res| {
     ///         // race to completion
-    ///         handle.complete(ret);
+    ///         inner_handle.complete(res);
     ///     });
-    ///     // await first result to arrive
-    ///     future.await.ok()
-    /// }
+    ///     // race to completion
+    ///     handle.complete(ret);
+    /// });
+    /// // await first result to arrive
+    /// future.await.ok()
+    /// # });
     /// # fn func_with_callback_and_return(func: impl FnOnce(u32)) -> u32 {
     /// #    func(1);
     /// #    1
@@ -441,5 +461,20 @@ mod tests {
         assert!(res.is_ok());
         let res = res.unwrap();
         assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn complete_multiple_sequencially() {
+        let (future, handle1) = create();
+        let handle2 = handle1.clone();
+        let handle3 = handle1.clone();
+        // successfully sends the value to complete on both
+        assert!(handle1.complete(1));
+        assert!(handle2.complete(2));
+        
+        let result = future.await.unwrap();
+        // unsuccessfully tries to complete a future that completed
+        assert!(!handle3.complete(3));
+        assert_eq!(result, 1);
     }
 }
