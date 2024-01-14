@@ -66,14 +66,14 @@ use spin::mutex::SpinMutex;
 /// Future to suspend execution until [`SuspendHandle`] completes.
 #[derive(Debug)]
 pub struct SuspendFuture<T> {
-    receiver: Receiver<SuspendUpdate<T>>,
+    receiver: Receiver<T>,
     waker: Arc<SpinMutex<Option<Waker>>>,
 }
 
 /// Handle to signal a [`SuspendFuture`] that a result is ready.
 #[derive(Debug)]
 pub struct SuspendHandle<T> {
-    sender: Sender<SuspendUpdate<T>>,
+    sender: Sender<T>,
     waker: Weak<SpinMutex<Option<Waker>>>,
 }
 
@@ -89,12 +89,6 @@ pub enum SuspendError {
 
 /// An ergonomic `Result` type to wrap standard `Result` with error [`SuspendError`].
 pub type SuspendResult<T> = Result<T, SuspendError>;
-
-enum SuspendUpdate<T> {
-    Complete(T),
-    HandleDropped,
-    HandleCloned,
-}
 
 impl<T> SuspendFuture<T> {
     fn update_waker(&self, waker: Waker) {
@@ -114,17 +108,7 @@ impl<T: Send> Future for SuspendFuture<T> {
             Err(TryRecvError::Disconnected) => {
                 Poll::Ready(Err(SuspendError::DroppedBeforeComplete))
             },
-            Ok(update) => match update {
-                SuspendUpdate::HandleDropped | SuspendUpdate::HandleCloned => {
-                    let waker = cx.waker().clone();
-                    waker.wake_by_ref();
-                    self.update_waker(waker);
-                    Poll::Pending
-                },
-                SuspendUpdate::Complete(res) => {
-                    Poll::Ready(Ok(res))
-                }
-            },
+            Ok(value) => Poll::Ready(Ok(value)),
         }
     }
 }
@@ -152,14 +136,14 @@ impl<T> SuspendHandle<T> {
     /// # });
     /// ```
     pub fn complete(self, result: T) -> bool {
-        let successful = self.send_update(SuspendUpdate::Complete(result));
+        let successful = self.send_update(result);
         if let Some(waker) = self.waker.upgrade() {
             waker.lock().take();
         }
         successful
     }
 
-    fn send_update(&self, update: SuspendUpdate<T>) -> bool {
+    fn send_update(&self, update: T) -> bool {
         let mut successful = false;
         if let Some(waker) = self.waker.upgrade() {
             if self.sender.send(update).is_ok() {
@@ -198,14 +182,18 @@ impl<T> Clone for SuspendHandle<T> {
     /// # }
     /// ```
     fn clone(&self) -> Self {
-        self.send_update(SuspendUpdate::HandleCloned);
         Self { sender: self.sender.clone(), waker: Weak::clone(&self.waker) }
     }
 }
 
 impl<T> Drop for SuspendHandle<T> {
     fn drop(&mut self) {
-        self.send_update(SuspendUpdate::HandleDropped);
+        if let Some(waker) = self.waker.upgrade() {
+            // Wake future
+            if let Some(waker) = waker.lock().take() {
+                waker.wake();
+            }
+        }
     }
 }
 
