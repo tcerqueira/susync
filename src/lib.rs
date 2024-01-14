@@ -4,7 +4,7 @@
 //! Inspired on the `future_handles` crate.
 //! 
 //! The `susync` crate uses standard library channels under the hood. It uses thread-safe primitives but expects low contention,
-//! so it uses a single [`SpinMutex`] for shared state.
+//! so it uses a single [`SpinMutex`] for shared state. It should also work on `no_std` environments but it is not tested.
 //! By design handles are allowed to race to complete the future so it is ok to call complete on handle of a completed future. More info [here][`SuspendHandle::clone`].
 //! 
 //! ## Examples
