@@ -251,6 +251,27 @@ pub fn suspend<T: Send>(func: impl FnOnce(SuspendHandle<T>)) -> SuspendFuture<T>
     fut
 }
 
+// This approach doesnt work: https://doc.rust-lang.org/reference/macros-by-example.html#forwarding-a-matched-fragment
+#[allow(unused_macros)]
+macro_rules! map_if_closure {
+    ( $handle:ident, |$( $args:ident ),*| $body:expr ) => {
+        |$($args)*| {
+            $handle.complete(($($args),*));
+            $body
+        }
+    };
+    ( $handle:ident, $arg:expr ) => { $arg };
+}
+
+#[macro_export]
+macro_rules! suspend {
+    ( $func:ident($($args:expr),*) ) => {
+        $crate::suspend(|_handle| {
+            $func($(map_if_closure!(handle, $args)),*);
+        })
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -464,5 +485,19 @@ mod tests {
         // unsuccessfully tries to complete a future that completed
         assert!(!handle3.complete(3));
         assert_eq!(result, 1);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn macro_test() {
+        fn test_fn(a: i32, b: &str, func: impl FnOnce(i32, &str)) {
+            println!("test_fn with {}, {}", a, b);
+            func(a, b);
+        }
+        let fut: SuspendFuture<(i32, &str)> = suspend!(test_fn(42, "test", |a, b| {
+            println!("suspend_fn with {}, {}", a, b);
+        }));
+        let res = fut.await;
+        assert!(res.is_ok());
     }
 }
