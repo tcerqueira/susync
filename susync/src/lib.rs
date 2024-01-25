@@ -251,26 +251,5 @@ pub fn suspend<T: Send>(func: impl FnOnce(SuspendHandle<T>)) -> SuspendFuture<T>
     fut
 }
 
-// This approach doesnt work: https://doc.rust-lang.org/reference/macros-by-example.html#forwarding-a-matched-fragment
-#[allow(unused_macros)]
-macro_rules! map_if_closure {
-    ( $handle:ident, |$( $args:ident ),*| $body:expr ) => {
-        |$($args)*| {
-            $handle.complete(($($args),*));
-            $body
-        }
-    };
-    ( $handle:ident, $arg:expr ) => { $arg };
-}
-
-#[macro_export]
-macro_rules! suspend {
-    ( $func:ident($($args:expr),*) ) => {
-        $crate::suspend(|_handle| {
-            $func($(map_if_closure!(handle, $args)),*);
-        })
-    };
-}
-
 #[cfg(test)]
 mod tests;
