@@ -90,3 +90,22 @@ async fn macro_ref_single_arg() {
     let reference = fut.await.expect("result must be OK");
     assert_eq!(reference.member, 42);
 }
+
+// #[derive(Debug)]
+// struct RefArg {
+//     member: i32,
+// }
+
+// fn test_ref_not_clone(a: i32, func: impl FnOnce(&RefArg)) -> i32 {
+//     func(&RefArg { member: a });
+//     a
+// }
+
+// #[tokio::test]
+// async fn macro_ref_no_clone() {
+//     let fut = suspend!(test_ref_not_clone(42, |reference| {
+//         println!("args: {:?}", reference);
+//     }));
+//     let reference = fut.await.expect("result must be OK");
+//     assert_eq!(reference.member, 42);
+// }

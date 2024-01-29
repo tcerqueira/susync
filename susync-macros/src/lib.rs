@@ -80,6 +80,8 @@ fn generate_closure(captured_handle: &TokenStream, closure: syn::ExprClosure) ->
     let body = if args.len() == 1 {
         quote! {
             {
+                // struct ClosureArg<T: ToOwned>(T);
+                // #(let ClosureArg(#args) = ClosureArg(#args) ;)*
                 let expr_result = #body;
                 #captured_handle.complete(#(#args)*.to_owned());
                 expr_result
@@ -88,6 +90,8 @@ fn generate_closure(captured_handle: &TokenStream, closure: syn::ExprClosure) ->
     } else {
         quote! {
             {
+                // struct ClosureArg<T: ToOwned>(T);
+                // #(let ClosureArg(#args) = ClosureArg(#args) ;)*
                 let expr_result = #body;
                 #captured_handle.complete((#(#args.to_owned() ,)*));
                 expr_result
