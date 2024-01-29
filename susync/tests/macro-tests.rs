@@ -67,22 +67,44 @@ fn test_ref(a: i32, func: impl FnOnce(i32, &RefArgMock)) -> i32 {
     a
 }
 
-// hack to 
 #[derive(Debug)]
-struct ArgMock(RefArgMock);
+struct Args(i32, RefArgMock);
 
-impl From<&RefArgMock> for ArgMock {
-    fn from(value: &RefArgMock) -> Self {
-        ArgMock(value.clone())
+impl From<(i32, &RefArgMock)> for Args {
+    fn from(value: (i32, &RefArgMock)) -> Self {
+        Self(value.0, value.1.clone())
     }
 }
 
 #[tokio::test]
 async fn macro_ref_args() {
-    let fut: SuspendFuture<(i32, ArgMock)> = suspend!(test_ref(42, |integer, reference| {
+    let fut: SuspendFuture<Args> = suspend!(test_ref(42, |integer, reference| {
         println!("args: ({}, {:?})", integer, reference);
     }));
-    let (integer, ArgMock(reference)) = fut.await.expect("result must be OK");
+    let Args(integer, reference) = fut.await.expect("result must be OK");
     assert_eq!(integer, 42);
+    assert_eq!(reference.member, 42);
+}
+
+fn test_single_ref(a: i32, func: impl FnOnce(&RefArgMock)) -> i32 {
+    func(&RefArgMock { member: a });
+    a
+}
+
+#[derive(Debug)]
+struct Arg(RefArgMock);
+
+impl From<&RefArgMock> for Arg {
+    fn from(value: &RefArgMock) -> Self {
+        Self(value.clone())
+    }
+}
+
+#[tokio::test]
+async fn macro_ref_single_arg() {
+    let fut: SuspendFuture<Arg> = suspend!(test_single_ref(42, |reference| {
+        println!("args: {:?}", reference);
+    }));
+    let Arg(reference) = fut.await.expect("result must be OK");
     assert_eq!(reference.member, 42);
 }
