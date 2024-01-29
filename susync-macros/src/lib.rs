@@ -81,7 +81,7 @@ fn generate_closure(captured_handle: &TokenStream, closure: syn::ExprClosure) ->
         quote! {
             {
                 let expr_result = #body;
-                #captured_handle.complete(#(#args)*.into());
+                #captured_handle.complete(#(#args)*.to_owned());
                 expr_result
             }
         }
@@ -89,7 +89,7 @@ fn generate_closure(captured_handle: &TokenStream, closure: syn::ExprClosure) ->
         quote! {
             {
                 let expr_result = #body;
-                #captured_handle.complete((#(#args ,)*).into());
+                #captured_handle.complete((#(#args.to_owned() ,)*));
                 expr_result
             }
         }
