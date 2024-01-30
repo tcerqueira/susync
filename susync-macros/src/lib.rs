@@ -22,29 +22,28 @@ pub fn suspend(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let handle_ident = quote_spanned!(Span::mixed_site()=> handle);
     // Leave normal args the same and modify closure argument
-    let found_first_closure = false;
+    let mut found_first_closure = false;
     let gen_args = args
-        .iter()
+        .into_iter()
         .rev()
         .map(|arg| match arg {
             Expr::Closure(expr_closure) if !found_first_closure => {
+                found_first_closure = true;
                 Expr::Closure(generate_closure(&handle_ident, expr_closure.clone()))
             }
             _ => arg.clone(),
         })
         .collect::<Vec<_>>();
 
-    match input {
+    let call_fn = match input {
         Expr::Call(expr_call) => {
             let call = ExprCall {
                 args: Punctuated::from_iter(gen_args.into_iter().rev()),
                 ..expr_call
             };
             quote! {
-                ::susync::suspend(|#handle_ident| {
-                    let _ = #call;
-                })
-            }.into()
+                #call;
+            }
         },
         Expr::MethodCall(method_call) => {
             let call = ExprMethodCall {
@@ -52,13 +51,17 @@ pub fn suspend(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 ..method_call
             };
             quote! {
-                ::susync::suspend(|#handle_ident| {
-                    let _ = #call;
-                })
-            }.into()
+                #call;
+            }
         },
         _ => panic!("suspend macro can only be applied to function/method calls"),
-    }
+    };
+
+    quote! {
+        ::susync::suspend(|#handle_ident| {
+            let _ = #call_fn;
+        })
+    }.into()
 }
 
 // Helper function to generate the closure
@@ -76,26 +79,24 @@ fn generate_closure(captured_handle: &TokenStream, closure: syn::ExprClosure) ->
         })
         .collect::<Vec<_>>();
 
-    let body = &closure.body;
-    let body = if args.len() == 1 {
+    
+    let handle_stmt = if args.len() == 1 {
         quote! {
-            {
-                // struct ClosureArg<T: ToOwned>(T);
-                // #(let ClosureArg(#args) = ClosureArg(#args) ;)*
-                let expr_result = #body;
-                #captured_handle.complete(#(#args)*.to_owned());
-                expr_result
-            }
+            #captured_handle.complete(#(#args.to_owned())*)
         }
     } else {
         quote! {
-            {
-                // struct ClosureArg<T: ToOwned>(T);
-                // #(let ClosureArg(#args) = ClosureArg(#args) ;)*
-                let expr_result = #body;
-                #captured_handle.complete((#(#args.to_owned() ,)*));
-                expr_result
-            }
+            #captured_handle.complete(( #(#args.to_owned(),)* ))
+        }
+    };
+
+    let body = &closure.body;
+    let body = quote! {
+        {
+            let expr_result = #body;
+            // #(let #args = ::std::borrow::ToOwned::to_owned(#args);)*
+            #handle_stmt;
+            expr_result
         }
     };
 

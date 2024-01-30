@@ -1,9 +1,47 @@
 use susync::SuspendFuture;
 use susync_macros::suspend;
 
+// ********************** HELPER FUNCTIONS **********************
+// **************************************************************
+
 fn test_fn_empty(_a: i32, func: impl FnOnce()) {
     func();
 }
+
+fn test_multiple(a: i32, func: impl FnOnce(i32, f32)) {
+    func(a, 69.0);
+}
+
+fn test_return(a: i32, func: impl FnOnce(i32) -> i32) {
+    assert_eq!(func(a), a);
+}
+
+fn test_multiple_closures(a: impl FnOnce(i32, i32), b: impl FnOnce(i32)) {
+    a(42, 69);
+    b(42);
+}
+
+fn test_closure_with_str(func: impl FnOnce(i32, &str)) {
+    func(42, "test");
+}
+
+#[derive(Clone, Debug)]
+struct RefArgMock {
+    member: i32,
+}
+
+fn test_ref(a: i32, func: impl FnOnce(i32, &RefArgMock)) -> i32 {
+    func(a, &RefArgMock { member: a });
+    a
+}
+
+fn test_single_ref(a: i32, func: impl FnOnce(&RefArgMock)) -> i32 {
+    func(&RefArgMock { member: a });
+    a
+}
+
+// **************************** TESTS ***************************
+// **************************************************************
 
 #[tokio::test]
 async fn macro_empty_args() {
@@ -11,10 +49,6 @@ async fn macro_empty_args() {
         println!()
     }));
     fut.await.expect("result must be Ok");
-}
-
-fn test_multiple(a: i32, func: impl FnOnce(i32, f32)) {
-    func(a, 69.0);
 }
 
 #[tokio::test]
@@ -43,8 +77,12 @@ async fn macro_ignore_arg() {
     assert_eq!(res, 42);
 }
 
-fn test_return(a: i32, func: impl FnOnce(i32) -> i32) {
-    assert_eq!(func(a), a);
+#[tokio::test]
+async fn macro_ignore_all_args() {
+    let fut = suspend!(test_multiple(42, |_, _| {
+        println!("args: (_, _)");
+    }));
+    fut.await.expect("result must be OK");
 }
 
 #[tokio::test]
@@ -57,14 +95,44 @@ async fn macro_assert_return() {
     assert_eq!(res, 42);
 }
 
-#[derive(Clone, Debug)]
-struct RefArgMock {
-    member: i32,
+#[tokio::test]
+async fn macro_closure_no_braces() {
+    let fut = suspend!(test_return(42, |x| x));
+    let res = fut.await.expect("result must be OK");
+    assert_eq!(res, 42);
 }
 
-fn test_ref(a: i32, func: impl FnOnce(i32, &RefArgMock)) -> i32 {
-    func(a, &RefArgMock { member: a });
-    a
+#[tokio::test]
+async fn macro_closure_no_body() {
+    let fut = suspend!(test_multiple(42, |a, b| {}));
+    let res = fut.await.expect("result must be OK");
+    assert_eq!(res, (42, 69.0));
+}
+
+#[tokio::test]
+async fn macro_move_closure() {
+    let fut = suspend!(test_multiple(42, move |_, _| {
+        println!("args: (_, _)");
+    }));
+    fut.await.expect("result must be OK");
+}
+
+#[tokio::test]
+async fn macro_last_closure() {
+    let fut = suspend!(test_multiple_closures(|_a, _b| {}, |x| {
+        println!("args: {x}");
+    }));
+    let res = fut.await.expect("result must be Ok");
+    assert_eq!(res, 42);
+}
+
+#[tokio::test]
+async fn macro_str_arg() {
+    let fut = suspend!(test_closure_with_str(|a, b| {
+        println!("args: ({a}, {b})");
+    }));
+    let res = fut.await.expect("result must be Ok");
+    assert_eq!(res, (42, "test".to_owned()));
 }
 
 #[tokio::test]
@@ -77,11 +145,6 @@ async fn macro_ref_args() {
     assert_eq!(reference.member, 42);
 }
 
-fn test_single_ref(a: i32, func: impl FnOnce(&RefArgMock)) -> i32 {
-    func(&RefArgMock { member: a });
-    a
-}
-
 #[tokio::test]
 async fn macro_ref_single_arg() {
     let fut = suspend!(test_single_ref(42, |reference| {
@@ -90,22 +153,3 @@ async fn macro_ref_single_arg() {
     let reference = fut.await.expect("result must be OK");
     assert_eq!(reference.member, 42);
 }
-
-// #[derive(Debug)]
-// struct RefArg {
-//     member: i32,
-// }
-
-// fn test_ref_not_clone(a: i32, func: impl FnOnce(&RefArg)) -> i32 {
-//     func(&RefArg { member: a });
-//     a
-// }
-
-// #[tokio::test]
-// async fn macro_ref_no_clone() {
-//     let fut = suspend!(test_ref_not_clone(42, |reference| {
-//         println!("args: {:?}", reference);
-//     }));
-//     let reference = fut.await.expect("result must be OK");
-//     assert_eq!(reference.member, 42);
-// }
