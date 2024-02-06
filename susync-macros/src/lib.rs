@@ -1,11 +1,22 @@
+//! Support crate that contains the function-like procedural macros for [susync].
+//! 
+//! All documentation lives in that crate.
+//! 
+//! [susync]: https://docs.rs/susync
+
 extern crate proc_macro;
 
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{parse_macro_input, punctuated::Punctuated, Expr, ExprCall, ExprMethodCall, Pat, PatIdent, PatType};
 
+/// Generate the boilerplate for the use case where the future output is equal, or similar, to the callback arguments.
+/// 
+/// See full [documentation] for more details.
+/// 
+/// [documentation]: https://docs.rs/susync
 #[proc_macro]
-pub fn suspend(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn sus(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as Expr);
     // Extract method/function call arguments
     let args = match &input {

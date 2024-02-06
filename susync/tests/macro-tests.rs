@@ -1,5 +1,5 @@
 use susync::SuspendFuture;
-use susync_macros::suspend;
+use susync::sus;
 
 // ********************** HELPER FUNCTIONS **********************
 // **************************************************************
@@ -45,7 +45,7 @@ fn test_single_ref(a: i32, func: impl FnOnce(&RefArgMock)) -> i32 {
 
 #[tokio::test]
 async fn macro_empty_args() {
-    let fut: SuspendFuture<()> = suspend!(test_fn_empty(42, || {
+    let fut: SuspendFuture<()> = sus!(test_fn_empty(42, || {
         println!()
     }));
     fut.await.expect("result must be Ok");
@@ -53,7 +53,7 @@ async fn macro_empty_args() {
 
 #[tokio::test]
 async fn macro_multiple_args() {
-    let fut: SuspendFuture<(i32, f32)> = suspend!(test_multiple(42, |integer, float| {
+    let fut: SuspendFuture<(i32, f32)> = sus!(test_multiple(42, |integer, float| {
         println!("args: ({}, {})", integer, float);
     }));
 
@@ -63,14 +63,14 @@ async fn macro_multiple_args() {
 
 #[tokio::test]
 async fn macro_name_collision() {
-    let _fut: SuspendFuture<(i32, f32)> = suspend!(test_multiple(42, |handle, float| {
+    let _fut: SuspendFuture<(i32, f32)> = sus!(test_multiple(42, |handle, float| {
         println!("args: ({}, {})", handle, float);
     }));
 }
 
 #[tokio::test]
 async fn macro_ignore_arg() {
-    let fut: SuspendFuture<i32> = suspend!(test_multiple(42, |integer, _| {
+    let fut: SuspendFuture<i32> = sus!(test_multiple(42, |integer, _| {
         println!("args: ({}, _)", integer);
     }));
     let res = fut.await.expect("result must be OK");
@@ -79,7 +79,7 @@ async fn macro_ignore_arg() {
 
 #[tokio::test]
 async fn macro_ignore_all_args() {
-    let fut = suspend!(test_multiple(42, |_, _| {
+    let fut = sus!(test_multiple(42, |_, _| {
         println!("args: (_, _)");
     }));
     fut.await.expect("result must be OK");
@@ -87,7 +87,7 @@ async fn macro_ignore_all_args() {
 
 #[tokio::test]
 async fn macro_assert_return() {
-    let fut: SuspendFuture<i32> = suspend!(test_return(42, |integer| {
+    let fut: SuspendFuture<i32> = sus!(test_return(42, |integer| {
         println!("args: {}", integer);
         integer
     }));
@@ -97,21 +97,21 @@ async fn macro_assert_return() {
 
 #[tokio::test]
 async fn macro_closure_no_braces() {
-    let fut = suspend!(test_return(42, |x| x));
+    let fut = sus!(test_return(42, |x| x));
     let res = fut.await.expect("result must be OK");
     assert_eq!(res, 42);
 }
 
 #[tokio::test]
 async fn macro_closure_no_body() {
-    let fut = suspend!(test_multiple(42, |a, b| {}));
+    let fut = sus!(test_multiple(42, |a, b| {}));
     let res = fut.await.expect("result must be OK");
     assert_eq!(res, (42, 69.0));
 }
 
 #[tokio::test]
 async fn macro_move_closure() {
-    let fut = suspend!(test_multiple(42, move |_, _| {
+    let fut = sus!(test_multiple(42, move |_, _| {
         println!("args: (_, _)");
     }));
     fut.await.expect("result must be OK");
@@ -119,7 +119,7 @@ async fn macro_move_closure() {
 
 #[tokio::test]
 async fn macro_last_closure() {
-    let fut = suspend!(test_multiple_closures(|_a, _b| {}, |x| {
+    let fut = sus!(test_multiple_closures(|_a, _b| {}, |x| {
         println!("args: {x}");
     }));
     let res = fut.await.expect("result must be Ok");
@@ -128,7 +128,7 @@ async fn macro_last_closure() {
 
 #[tokio::test]
 async fn macro_str_arg() {
-    let fut = suspend!(test_closure_with_str(|a, b| {
+    let fut = sus!(test_closure_with_str(|a, b| {
         println!("args: ({a}, {b})");
     }));
     let res = fut.await.expect("result must be Ok");
@@ -137,7 +137,7 @@ async fn macro_str_arg() {
 
 #[tokio::test]
 async fn macro_ref_args() {
-    let fut = suspend!(test_ref(42, |integer, reference| {
+    let fut = sus!(test_ref(42, |integer, reference| {
         println!("args: ({}, {:?})", integer, reference);
     }));
     let (integer, reference) = fut.await.expect("result must be OK");
@@ -147,7 +147,7 @@ async fn macro_ref_args() {
 
 #[tokio::test]
 async fn macro_ref_single_arg() {
-    let fut = suspend!(test_single_ref(42, |reference| {
+    let fut = sus!(test_single_ref(42, |reference| {
         println!("args: {:?}", reference);
     }));
     let reference = fut.await.expect("result must be OK");

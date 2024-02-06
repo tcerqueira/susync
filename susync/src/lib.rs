@@ -59,6 +59,108 @@
 //! ```
 //! Awaiting a [`SuspendFuture`] before setting the result with
 //! [`SuspendHandle`] will cause a **deadlock**!
+//! 
+//! # Macro shortcuts
+//! 
+//! If your use case is to simply to call `complete` on the [`SuspendHandle`] with the arguments of a callback, the [`sus`] macro is an option.
+//! 
+//! ```rust
+//! # use susync::sus;
+//! # async fn func() {
+//! // With one closure argument
+//! fn func_one_arg(func: impl FnOnce(u32)) {
+//!    func(42);
+//! }
+//! // Here the arguments of the closure will be passed to `complete`
+//! let result = sus!(func_one_arg(|x| {})).await.unwrap();
+//! assert_eq!(result, 42);
+//! 
+//! // With two closure arguments
+//! fn func_two_args(func: impl FnOnce(u32, f32)) {
+//!    func(42, 69.0);
+//! }
+//! // Here the arguments of the closure will be passed to `complete`
+//! let result = sus!(func_two_args(|x, y| {})).await.unwrap();
+//! assert_eq!(result, (42, 69.0));
+//! # }
+//! ```
+//! 
+//! The [`SuspendFuture`] will hold the arguments in a tuple or just a type in case it's just one argument.
+//! You can ignore arguments by using the wildcard `_` token.
+//! 
+//! ```rust
+//! # use susync::sus;
+//! # async fn func() {
+//! fn func_with_callback(func: impl FnOnce(u32, &str)) {
+//!    func(42, "ignored :(");
+//! }
+//! // Here the second argument gets ignored
+//! let result = sus!(func_with_callback(|x, _| {})).await.unwrap();
+//! assert_eq!(result, 42); 
+//! # }
+//! ```
+//! 
+//! ## Macro invariants
+//! 
+//! The callback argument must be a closure.
+//! This macro implementation revolves around generating a new closure that runs the original and also forwards the arguments to [`SuspendHandle::complete`].
+//! The logic is wrapped in a [`suspend`] that returns a future.
+//! For this reason it's not possible to accept anything else other than a closure because it's not possible to infer the future output type.
+//! 
+//! The [`sus`] macro calls `to_owned` on all arguments so all arguments in the callback must implement [`ToOwned`] trait.
+//! This is to allow reference arguments like `&str` and any other reference of a type that implements [`Clone`] (check `ToOwned` [implementors]).
+//! 
+//! [implementors]: https://doc.rust-lang.org/std/borrow/trait.ToOwned.html#implementors
+//! 
+//! Still looking for ways to overcome this limitation and give the user the freedom to choose how to complete the future.
+//! 
+//! ```rust, compile_fail
+//! # use susync::sus;
+//! # async fn func() {
+//! // Does *NOT* implement `ToOwned`
+//! struct RefArg(i32);
+//! fn func(f: impl FnOnce(&RefArg)) {
+//!    f(&RefArg(42));
+//! }
+//! // *ILLEGAL*: Here the argument will clone a reference and try to outlive the scope
+//! let RefArg(result) = sus!(func(|arg| {})).await.unwrap();
+//! # }
+//! ```
+//! 
+//! Unfortunately the error message is not very friendly because the error is trait bounds but they are implicit to the macro.
+//! So if you ever get an error message like below it is likely a reference is being passed to complete instead of an owned value.
+//! 
+//! ```text
+//! error[E0521]: borrowed data escapes outside of closure
+//!   --> susync/src/lib.rs:127:22
+//!    |
+//! 13 | let RefArg(result) = sus!(func(|arg| {})).await.unwrap();
+//!    |                      ^^^^^^^^^^^---^^^^^^
+//!    |                      |          |
+//!    |                      |          `arg` is a reference that is only valid in the closure body
+//!    |                      `handle` declared here, outside of the closure body
+//!    |                      `arg` escapes the closure body here
+//!    |
+//!    = note: this error originates in the macro `sus`
+//! ```
+//! 
+//! In case there are more than one callback argument the macro only generates the boilerplate for the last one in the argument list.
+//! For no particular reason, just vague assumption that result callbacks come last.
+//! 
+//! ```rust
+//! # use susync::sus;
+//! # async fn func() {
+//! fn func_with_callback(func1: impl FnOnce(i32), func2: impl FnOnce(f32)) {
+//!    func1(42);
+//!    func2(69.0);
+//! }
+//! // Here the macro only applies to the last closure
+//! let result = sus!(func_with_callback(|_i| {}, |f| {})).await.unwrap();
+//! assert_eq!(result, 69.0);
+//! # }
+//! ``` 
+
+pub use susync_macros::sus;
 
 use std::{sync::{mpsc::{Receiver, Sender, TryRecvError, self}, Arc, Weak}, future::Future, pin::Pin, task::{Poll, Waker}};
 use spin::mutex::SpinMutex;
