@@ -1,5 +1,5 @@
-use susync::SuspendFuture;
 use susync::sus;
+use susync::SuspendFuture;
 
 // ********************** HELPER FUNCTIONS **********************
 // **************************************************************
@@ -45,9 +45,7 @@ fn test_single_ref(a: i32, func: impl FnOnce(&RefArgMock)) -> i32 {
 
 #[tokio::test]
 async fn macro_empty_args() {
-    let fut: SuspendFuture<()> = sus!(test_fn_empty(42, || {
-        println!()
-    }));
+    let fut: SuspendFuture<()> = sus!(test_fn_empty(42, || { println!() }));
     fut.await.expect("result must be Ok");
 }
 
@@ -119,9 +117,12 @@ async fn macro_move_closure() {
 
 #[tokio::test]
 async fn macro_last_closure() {
-    let fut = sus!(test_multiple_closures(|_a, _b| {}, |x| {
-        println!("args: {x}");
-    }));
+    let fut = sus!(test_multiple_closures(
+        |_a, _b| {},
+        |x| {
+            println!("args: {x}");
+        }
+    ));
     let res = fut.await.expect("result must be Ok");
     assert_eq!(res, 42);
 }

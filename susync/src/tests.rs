@@ -17,7 +17,7 @@ async fn return_value() {
 #[tokio::test]
 async fn drop_handle() {
     let (fut, comp) = create::<()>();
-    
+
     let inner_comp = comp.clone();
     tokio::spawn(async move {
         std::thread::sleep(std::time::Duration::from_millis(100));
@@ -32,7 +32,7 @@ async fn drop_handle() {
 #[tokio::test]
 async fn complete_after_drop() {
     let (fut, comp) = create::<()>();
-    
+
     let inner_comp = comp.clone();
     tokio::spawn(async move {
         std::thread::sleep(std::time::Duration::from_millis(100));
@@ -47,7 +47,7 @@ async fn complete_after_drop() {
 #[tokio::test]
 async fn complete_after_await() {
     let (fut, comp) = create::<()>();
-    
+
     let inner_comp = comp.clone();
     tokio::spawn(async move {
         std::thread::sleep(std::time::Duration::from_millis(100));
@@ -68,7 +68,7 @@ async fn many_drops_race() {
     }
     drop(comp);
 
-    let res= fut.await;
+    let res = fut.await;
     assert!(res.is_err());
 }
 
@@ -84,7 +84,7 @@ async fn many_drops_race_async() {
     }
     drop(comp);
 
-    let res= fut.await;
+    let res = fut.await;
     assert!(res.is_err());
 }
 
@@ -100,7 +100,7 @@ async fn many_handles_race() {
     }
     drop(comp);
 
-    let res= fut.await;
+    let res = fut.await;
     assert!(res.is_ok());
 }
 
@@ -118,7 +118,7 @@ async fn many_handles_race_async() {
     }
     drop(comp);
 
-    let res= fut.await;
+    let res = fut.await;
     assert!(res.is_ok());
 }
 
@@ -204,7 +204,7 @@ async fn complete_multiple_sequencially() {
     // successfully sends the value to complete on both
     assert!(handle1.complete(1));
     assert!(handle2.complete(2));
-    
+
     let result = future.await.unwrap();
     // unsuccessfully tries to complete a future that completed
     assert!(!handle3.complete(3));

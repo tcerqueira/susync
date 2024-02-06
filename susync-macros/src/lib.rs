@@ -1,19 +1,22 @@
 //! Support crate that contains the function-like procedural macros for [susync].
-//! 
+//!
 //! All documentation lives in that crate.
-//! 
+//!
 //! [susync]: https://docs.rs/susync
 
 extern crate proc_macro;
 
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{parse_macro_input, punctuated::Punctuated, Expr, ExprCall, ExprMethodCall, Pat, PatIdent, PatType};
+use syn::{
+    parse_macro_input, punctuated::Punctuated, Expr, ExprCall, ExprMethodCall, Pat, PatIdent,
+    PatType,
+};
 
 /// Generate the boilerplate for the use case where the future output is equal, or similar, to the callback arguments.
-/// 
+///
 /// See full [documentation] for more details.
-/// 
+///
 /// [documentation]: https://docs.rs/susync
 #[proc_macro]
 pub fn sus(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -55,7 +58,7 @@ pub fn sus(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote! {
                 #call;
             }
-        },
+        }
         Expr::MethodCall(method_call) => {
             let call = ExprMethodCall {
                 args: Punctuated::from_iter(gen_args.into_iter().rev()),
@@ -64,7 +67,7 @@ pub fn sus(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote! {
                 #call;
             }
-        },
+        }
         _ => panic!("suspend macro can only be applied to function/method calls"),
     };
 
@@ -72,17 +75,19 @@ pub fn sus(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         ::susync::suspend(|#handle_ident| {
             let _ = #call_fn;
         })
-    }.into()
+    }
+    .into()
 }
 
 // Helper function to generate the closure
 fn generate_closure(captured_handle: &TokenStream, closure: syn::ExprClosure) -> syn::ExprClosure {
-    let args = closure.inputs
+    let args = closure
+        .inputs
         .iter()
         .flat_map(|arg_pat| match arg_pat {
-            Pat::Ident(PatIdent{ident, ..}) => Some(ident),
-            Pat::Type(PatType{pat, ..}) => match pat.as_ref() {
-                Pat::Ident(PatIdent{ident, ..}) => Some(ident),
+            Pat::Ident(PatIdent { ident, .. }) => Some(ident),
+            Pat::Type(PatType { pat, .. }) => match pat.as_ref() {
+                Pat::Ident(PatIdent { ident, .. }) => Some(ident),
                 _ => None,
             },
             Pat::Wild(_) => None,
@@ -90,7 +95,6 @@ fn generate_closure(captured_handle: &TokenStream, closure: syn::ExprClosure) ->
         })
         .collect::<Vec<_>>();
 
-    
     let handle_stmt = if args.len() == 1 {
         quote! {
             #captured_handle.complete(#(#args.to_owned())*)
