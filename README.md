@@ -32,5 +32,12 @@ async fn func() -> Option<u32> {
 }
 ```
 
+Macro:
+```rust
+async fn func() -> Option<u32> {
+    sus!(func_with_callback(|res| {})).await.ok()
+}
+```
+
 ## Docs
 Full documentation [here](https://docs.rs/susync/).
