@@ -6,7 +6,7 @@ license = "MIT"
 documentation = "https://docs.rs/susync/"
 description = "An util crate to complete futures through a handle. Its main purpose is to bridge async Rust and callback-based APIs."
 repository = "https://github.com/tcerqueira/susync"
-readme = "README.md"
+readme = "../README.md"
 keywords = ["async", "callback", "bridge", "future", "handle"]
 categories = ["asynchronous"]
 

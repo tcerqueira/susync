@@ -109,7 +109,6 @@ fn generate_closure(captured_handle: &TokenStream, closure: syn::ExprClosure) ->
     let body = quote! {
         {
             let expr_result = #body;
-            // #(let #args = ::std::borrow::ToOwned::to_owned(#args);)*
             #handle_stmt;
             expr_result
         }

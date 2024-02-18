@@ -2,6 +2,13 @@
 name = "susync-macros"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+documentation = "https://docs.rs/susync-macros/"
+description = "A proc macro crate for susync crate."
+repository = "https://github.com/tcerqueira/susync"
+readme = "../README.md"
+keywords = ["async", "callback", "bridge", "future", "handle"]
+categories = ["asynchronous"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
