@@ -1,6 +1,6 @@
 [package]
 name = "susync"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 documentation = "https://docs.rs/susync/"
@@ -15,7 +15,7 @@ categories = ["asynchronous"]
 [dependencies]
 spin = { version = "0.9.8", default-features = false, features = ["spin_mutex"] }
 thiserror = "1.0.51"
-susync-macros ={ path = "../susync-macros" }
+susync-macros = { version = "0.1.0"}
 
 [dev-dependencies]
 tokio = { version = "1.34.0", features = ["rt", "macros"] }
